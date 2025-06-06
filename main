@@ -1,70 +1,29 @@
-import cv2
-import numpy as np
-from skimage.feature import graycomatrix, graycoprops
-from scipy.fftpack import fft2
-from skimage.color import rgb2gray, rgb2hsv
-from skimage.measure import label, regionprops
+import os
+import pandas as pd
+from segmentation import extract_features
 
-def extract_features(image_path):
-    features = {}
 
-    # 1. Load image and preprocess
-    img = cv2.imread(image_path)
-    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+def generate_feature_dataframe(image_dir):
+    """
+    Some simple example code for using the extract_features function
+    you can modify this to suit your needs
+    """
+    df = pd.DataFrame()
 
-    # 2. Segment mango by thresholding (naive global threshold or adaptive if needed)
-    _, mask = cv2.threshold(img_gray, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+    for fname in os.listdir(image_dir):
+        if fname.lower().endswith((".jpg", ".jpeg", ".png")):
+            path = os.path.join(image_dir, fname)
+            row = extract_features(path)
+            row_df = pd.DataFrame([row])
+            row_df["filename"] = fname
+            df = pd.concat([df, row_df], ignore_index=True)
 
-    # 3. Color features (HSV mean and std)
-    masked_hsv = img_hsv[mask == 255]
-    features['h_mean'] = np.mean(masked_hsv[:, 0])
-    features['s_mean'] = np.mean(masked_hsv[:, 1])
-    features['v_mean'] = np.mean(masked_hsv[:, 2])
-    features['h_std'] = np.std(masked_hsv[:, 0])
-    features['s_std'] = np.std(masked_hsv[:, 1])
-    features['v_std'] = np.std(masked_hsv[:, 2])
+    return df
 
-    # 4. Shape features (Aspect Ratio, Solidity, Roundness)
-    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    if contours:
-        cnt = max(contours, key=cv2.contourArea)
-        area = cv2.contourArea(cnt)
-        perimeter = cv2.arcLength(cnt, True)
-        x, y, w, h = cv2.boundingRect(cnt)
-        hull = cv2.convexHull(cnt)
-        hull_area = cv2.contourArea(hull)
-        features['aspect_ratio'] = float(w) / h
-        features['extent'] = float(area) / (w * h)
-        features['solidity'] = float(area) / hull_area if hull_area != 0 else 0
-        features['roundness'] = (4 * np.pi * area) / (perimeter ** 2) if perimeter != 0 else 0
 
-    # 5. Texture features (GLCM)
-    img_gray_norm = (img_gray / 255.0 * 15).astype(np.uint8)
-    glcm = graycomatrix(img_gray_norm, [1], [0], 16, symmetric=True, normed=True)
-    features['glcm_contrast'] = graycoprops(glcm, 'contrast')[0, 0]
-    features['glcm_homogeneity'] = graycoprops(glcm, 'homogeneity')[0, 0]
-    features['glcm_energy'] = graycoprops(glcm, 'energy')[0, 0]
-    features['glcm_entropy'] = -np.sum(glcm * np.log2(glcm + 1e-10))
-
-    # 6. Edge density (Canny)
-    edges = cv2.Canny(img_gray, 100, 200)
-    features['edge_density'] = np.sum(edges) / (img_gray.shape[0] * img_gray.shape[1])
-
-    # 7. Symmetry (horizontal)
-    h, w = img_gray.shape
-    left = img_gray[:, :w // 2]
-    right = img_gray[:, w // 2:]
-    right_flipped = np.fliplr(right)
-    min_width = min(left.shape[1], right_flipped.shape[1])
-    diff = np.abs(left[:, :min_width] - right_flipped[:, :min_width])
-    features['symmetry_horizontal'] = np.mean(diff)
-
-    return features
-
-# Example call (path can be replaced with actual mango image path)
-example_path = "Dataset\Classification_dataset\Anwar Ratool\IMG_20210630_102834.jpg"
-extracted_features = extract_features(example_path)
-print(extracted_features)
+if __name__ == "__main__":
+    image_dir = "Dataset/Classification_dataset/Anwar Ratool"  # 圖片資料夾路徑
+    output_csv = "mango_features.csv"  # 輸出 CSV
+    df = generate_feature_dataframe(image_dir)
+    df.to_csv(output_csv, index=False)
+    print(f"Features extracted and saved to {output_csv}")
