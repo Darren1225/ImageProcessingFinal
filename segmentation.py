@@ -1,8 +1,6 @@
 import cv2
 import numpy as np
-# import EdgeDensity as ED
-# import GLCM as GLCM
-# import Symmetry as SYM
+
 
 def edge_density(img_gray):
     # Step 1: Gaussian Blur
