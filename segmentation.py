@@ -1,4 +1,5 @@
 import cv2
+import os
 import numpy as np
 from skimage.feature import graycomatrix, graycoprops
 
@@ -13,11 +14,16 @@ def extract_features(image_path):
     img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
 
     # Use HSV to segment white background
-    lower_white = np.array([0, 0, 200])
-    upper_white = np.array([180, 30, 255])
+    lower_white = np.array([0, 0, 160])
+    upper_white = np.array([180, 80, 255])
     mask_bg = cv2.inRange(img_hsv, lower_white, upper_white)
     mask = cv2.bitwise_not(mask_bg)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+
+    output_dir = "output"
+    os.makedirs(output_dir, exist_ok=True)
+    filename = os.path.basename(image_path)
+    cv2.imwrite(os.path.join(output_dir, filename), mask)  # Save mask for debugging
 
     # HSV statistics
     masked_hsv = img_hsv[mask == 255]

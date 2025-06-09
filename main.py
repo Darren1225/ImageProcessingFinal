@@ -22,13 +22,8 @@ def generate_feature_dataframe(image_dir):
 
 
 if __name__ == "__main__":
-    """image_dir = "Dataset/Classification_dataset/Chaunsa (White)"
+    image_dir = "Dataset/Classification_dataset/Chaunsa (Black)"
     output_csv = "mango_features.csv"  # 輸出 CSV
     df = generate_feature_dataframe(image_dir)
     df.to_csv(output_csv, index=False)
     print(f"Features extracted and saved to {output_csv}")
-    """
-    path = "Dataset/Classification_dataset/Chaunsa (White)/IMG_20210705_101052.jpg"
-    features = extract_features(path)
-    for key, value in features.items():
-        print(f"{key}: {value}")
