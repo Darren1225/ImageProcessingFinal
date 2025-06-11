@@ -1,15 +1,14 @@
 import cv2
 import os
 import numpy as np
-from skimage.feature import graycomatrix, graycoprops
 
 
 def edge_density(img_gray):
     # Step 1: Gaussian Blur
-    blur = cv2.GaussianBlur(img_gray, (5, 5), 1.4)#not sure if allowed
+    blur = cv2.GaussianBlur(img_gray, (5, 5), 1.4)  # not sure if allowed
 
     # Step 2: Gradients
-    Gx = cv2.Sobel(blur, cv2.CV_64F, 1, 0, ksize=3)#not sure if allowed
+    Gx = cv2.Sobel(blur, cv2.CV_64F, 1, 0, ksize=3)  # not sure if allowed
     Gy = cv2.Sobel(blur, cv2.CV_64F, 0, 1, ksize=3)
     magnitude = np.sqrt(Gx**2 + Gy**2)
     angle = np.arctan2(Gy, Gx) * 180 / np.pi
@@ -18,37 +17,37 @@ def edge_density(img_gray):
     # Step 3: Non-Maximum Suppression
     nms = np.zeros_like(magnitude, dtype=np.uint8)
     rows, cols = magnitude.shape
-    for i in range(1, rows-1):
-        for j in range(1, cols-1):
+    for i in range(1, rows - 1):
+        for j in range(1, cols - 1):
             direction = angle[i, j]
             before = after = 0
 
             # (i-1, j-1)   (i-1, j)   (i-1, j+1)
             # (i,   j-1)   (i,   j)   (i,   j+1)
             # (i+1, j-1)   (i+1, j)   (i+1, j+1)
-            # Horizontal 
+            # Horizontal
             if (0 <= direction < 22.5) or (157.5 <= direction <= 180):
-                before = magnitude[i, j-1]
-                after = magnitude[i, j+1]
-            # ↘   
+                before = magnitude[i, j - 1]
+                after = magnitude[i, j + 1]
+            # ↘
             elif 22.5 <= direction < 67.5:
-                before = magnitude[i-1, j+1]
-                after = magnitude[i+1, j-1]
+                before = magnitude[i - 1, j + 1]
+                after = magnitude[i + 1, j - 1]
             # Vertical
             elif 67.5 <= direction < 112.5:
-                before = magnitude[i-1, j]
-                after = magnitude[i+1, j]
+                before = magnitude[i - 1, j]
+                after = magnitude[i + 1, j]
             # ↙
             elif 112.5 <= direction < 157.5:
-                before = magnitude[i-1, j-1]
-                after = magnitude[i+1, j+1]
+                before = magnitude[i - 1, j - 1]
+                after = magnitude[i + 1, j + 1]
 
             if magnitude[i, j] >= before and magnitude[i, j] >= after:
                 nms[i, j] = magnitude[i, j]
 
     # Step 4: Double Threshold (Customizable))
-    high_threshold = 100 #choose a value above which is considered a strong edge
-    low_threshold = 50 #choose a value below which is considered a weak edge
+    high_threshold = 100  # choose a value above which is considered a strong edge
+    low_threshold = 50  # choose a value below which is considered a weak edge
 
     strong = 255
     weak = 75
@@ -60,12 +59,19 @@ def edge_density(img_gray):
     res[weak_i, weak_j] = weak
 
     # Step 5: Hysteresis (eight-connectivity)
-    for i in range(1, rows-1):
-        for j in range(1, cols-1):
+    for i in range(1, rows - 1):
+        for j in range(1, cols - 1):
             if res[i, j] == weak:
-                if ((res[i+1, j-1] == strong) or (res[i+1, j] == strong) or (res[i+1, j+1] == strong)
-                    or (res[i, j-1] == strong) or (res[i, j+1] == strong)
-                    or (res[i-1, j-1] == strong) or (res[i-1, j] == strong) or (res[i-1, j+1] == strong)):
+                if (
+                    (res[i + 1, j - 1] == strong)
+                    or (res[i + 1, j] == strong)
+                    or (res[i + 1, j + 1] == strong)
+                    or (res[i, j - 1] == strong)
+                    or (res[i, j + 1] == strong)
+                    or (res[i - 1, j - 1] == strong)
+                    or (res[i - 1, j] == strong)
+                    or (res[i - 1, j + 1] == strong)
+                ):
                     res[i, j] = strong
                 else:
                     res[i, j] = 0
@@ -73,12 +79,12 @@ def edge_density(img_gray):
     # Step 6: Compute edge density (strong edges only)
     edge_density = np.sum(res == strong) / (rows * cols)
 
+    return {"edge_density": edge_density}
 
-    return {
-        "edge_density": edge_density
-    }
 
-def GLCM(img_gray, levels=16, directions=[(1, 0), (0, 1), (1, 1), (-1, 1)]):# levels=16 -> disctretize the image into 16 gray levels
+def GLCM(
+    img_gray, levels=16, directions=[(1, 0), (0, 1), (1, 1), (-1, 1)]
+):  # levels=16 -> disctretize the image into 16 gray levels
     img_norm = ((img_gray / 255.0) * (levels - 1)).astype(np.uint8)
     h, w = img_norm.shape
 
@@ -111,7 +117,7 @@ def GLCM(img_gray, levels=16, directions=[(1, 0), (0, 1), (1, 1), (-1, 1)]):# le
         i_indices, j_indices = np.indices(glcm.shape)
         contrast = np.sum(glcm * (i_indices - j_indices) ** 2)
         homogeneity = np.sum(glcm / (1.0 + np.abs(i_indices - j_indices)))
-        energy = np.sqrt(np.sum(glcm ** 2))  ## L2 norm(sqare root of sum of squares
+        energy = np.sqrt(np.sum(glcm**2))  ## L2 norm(sqare root of sum of squares
         entropy = -np.sum(glcm * np.log2(glcm + 1e-10))
 
         # Accumulate features
@@ -127,8 +133,9 @@ def GLCM(img_gray, levels=16, directions=[(1, 0), (0, 1), (1, 1), (-1, 1)]):# le
         "glcm_contrast": contrast_total / n,
         "glcm_homogeneity": homogeneity_total / n,
         "glcm_energy": energy_total / n,
-        "glcm_entropy": entropy_total / n
+        "glcm_entropy": entropy_total / n,
     }
+
 
 def Symmetry(img_gray):
 
@@ -138,8 +145,8 @@ def Symmetry(img_gray):
 
     # Horizontal symmetry
     h, w = img_gray.shape
-    left = img_gray[:, :w // 2]
-    right = img_gray[:, w // 2:]
+    left = img_gray[:, : w // 2]
+    right = img_gray[:, w // 2 :]
     right_flipped = np.fliplr(right)  # flip left to right
     min_width = min(left.shape[1], right_flipped.shape[1])
     symmetry_horizontal = np.mean(
@@ -147,17 +154,17 @@ def Symmetry(img_gray):
     )
 
     # Vertical symmetry
-    top = img_gray[:h // 2, :]
-    bottom = img_gray[h // 2:, :]
+    top = img_gray[: h // 2, :]
+    bottom = img_gray[h // 2 :, :]
     bottom_flipped = np.flipud(bottom)  # flip top to bottom
     min_height = min(top.shape[0], bottom_flipped.shape[0])
     symmetry_vertical = np.mean(
         np.abs(top[:min_height, :] - bottom_flipped[:min_height, :])
     )
-    
+
     return {
         "symmetry_horizontal": symmetry_horizontal,
-        "symmetry_vertical" : symmetry_vertical
+        "symmetry_vertical": symmetry_vertical,
     }
 
 
@@ -176,11 +183,6 @@ def extract_features(image_path):
     mask_bg = cv2.inRange(img_hsv, lower_white, upper_white)
     mask = cv2.bitwise_not(mask_bg)
     mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
-
-    output_dir = "output"
-    os.makedirs(output_dir, exist_ok=True)
-    filename = os.path.basename(image_path)
-    cv2.imwrite(os.path.join(output_dir, filename), mask)  # Save mask for debugging
 
     # HSV statistics
     masked_hsv = img_hsv[mask == 255]
@@ -230,7 +232,9 @@ def extract_features(image_path):
             )
 
     # Texture features (GLCM)
-    features.update(GLCM(img_gray, levels=16, directions=[(1, 0), (0, 1), (1, 1), (-1, 1)]))
+    features.update(
+        GLCM(img_gray, levels=16, directions=[(1, 0), (0, 1), (1, 1), (-1, 1)])
+    )
 
     # Edge density
     features.update(edge_density(img_gray))  # Edge Density features
