@@ -1,5 +1,7 @@
 import cv2
+import os
 import numpy as np
+from skimage.feature import graycomatrix, graycoprops
 
 
 def edge_density(img_gray):
@@ -152,11 +154,12 @@ def Symmetry(img_gray):
     symmetry_vertical = np.mean(
         np.abs(top[:min_height, :] - bottom_flipped[:min_height, :])
     )
-
+    
     return {
         "symmetry_horizontal": symmetry_horizontal,
         "symmetry_vertical" : symmetry_vertical
     }
+
 
 def extract_features(image_path):
     features = {}
@@ -166,9 +169,80 @@ def extract_features(image_path):
     img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     img_hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
-    features.update(edge_density(img_gray))  # Edge Density features
+
+    # Use HSV to segment white background
+    lower_white = np.array([0, 0, 160])
+    upper_white = np.array([180, 80, 255])
+    mask_bg = cv2.inRange(img_hsv, lower_white, upper_white)
+    mask = cv2.bitwise_not(mask_bg)
+    mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, np.ones((5, 5), np.uint8))
+
+    output_dir = "output"
+    os.makedirs(output_dir, exist_ok=True)
+    filename = os.path.basename(image_path)
+    cv2.imwrite(os.path.join(output_dir, filename), mask)  # Save mask for debugging
+
+    # HSV statistics
+    masked_hsv = img_hsv[mask == 255]
+    masked_v = masked_hsv[:, 2]
+    features["h_mean"] = np.mean(masked_hsv[:, 0])
+    features["s_mean"] = np.mean(masked_hsv[:, 1])
+    features["v_mean"] = np.mean(masked_hsv[:, 2])
+    features["h_std"] = np.std(masked_hsv[:, 0])
+    features["s_std"] = np.std(masked_hsv[:, 1])
+    features["v_std"] = np.std(masked_hsv[:, 2])
+
+    # Hue Histogram
+    hist = cv2.calcHist([img_hsv], [0], mask, [16], [0, 180])
+    hist = cv2.normalize(hist, hist).flatten()
+    for i in range(len(hist)):
+        features[f"hist_h_{i}"] = hist[i]
+
+    # Shape features
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    if contours:
+        cnt = max(contours, key=cv2.contourArea)
+        area = cv2.contourArea(cnt)
+        perimeter = cv2.arcLength(cnt, True)
+        x, y, w, h = cv2.boundingRect(cnt)
+        hull = cv2.convexHull(cnt)
+        hull_area = cv2.contourArea(hull)
+        features["aspect_ratio"] = float(w) / h
+        features["extent"] = float(area) / (w * h)
+        features["solidity"] = float(area) / hull_area if hull_area != 0 else 0
+        features["roundness"] = (
+            (4 * np.pi * area) / (perimeter**2) if perimeter != 0 else 0
+        )
+
+        # Elongation
+        if len(cnt) >= 5:
+            ellipse = cv2.fitEllipse(cnt)
+            (center, axes, angle) = ellipse
+            major_axis, minor_axis = max(axes), min(axes)
+            features["elongation"] = major_axis / minor_axis
+
+        # Hu Moments
+        moments = cv2.moments(cnt)
+        hu_moments = cv2.HuMoments(moments).flatten()
+        for i in range(3):
+            features[f"hu_{i}"] = -np.sign(hu_moments[i]) * np.log10(
+                abs(hu_moments[i]) + 1e-10
+            )
+
+    # Texture features (GLCM)
     features.update(GLCM(img_gray, levels=16, directions=[(1, 0), (0, 1), (1, 1), (-1, 1)]))
+
+    # Edge density
+    features.update(edge_density(img_gray))  # Edge Density features
+
+    # Symmetry (horizontal & vertical)
     features.update(Symmetry(img_gray))
-    
+
+    # Bright spot ratio
+    features["bright_spot_ratio"] = np.mean(masked_v > 240)
+
+    # Surface roughness (Laplacian)
+    lap = cv2.Laplacian(img_gray, cv2.CV_64F)
+    features["laplacian_var"] = lap.var()
 
     return features

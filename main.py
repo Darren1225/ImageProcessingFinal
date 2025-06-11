@@ -22,7 +22,7 @@ def generate_feature_dataframe(image_dir):
 
 
 if __name__ == "__main__":
-    image_dir = "Dataset/Classification_dataset/Anwar Ratool"  # 圖片資料夾路徑
+    image_dir = "Dataset/Classification_dataset/Chaunsa (Black)"
     output_csv = "mango_features.csv"  # 輸出 CSV
     df = generate_feature_dataframe(image_dir)
     df.to_csv(output_csv, index=False)
