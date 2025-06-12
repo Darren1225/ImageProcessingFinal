@@ -6,6 +6,7 @@ from sklearn.metrics import classification_report, confusion_matrix
 import matplotlib.pyplot as plt
 import seaborn as sns
 
+
 def run_classification(csv_file):
     # 1. 讀取資料
     df = pd.read_csv(csv_file)
@@ -35,8 +36,14 @@ def run_classification(csv_file):
     # 7. 混淆矩陣
     cm = confusion_matrix(y_test, y_pred, labels=clf.classes_)
     plt.figure(figsize=(8, 6))
-    sns.heatmap(cm, annot=True, fmt="d", cmap="Blues", 
-                xticklabels=clf.classes_, yticklabels=clf.classes_)
+    sns.heatmap(
+        cm,
+        annot=True,
+        fmt="d",
+        cmap="Blues",
+        xticklabels=clf.classes_,
+        yticklabels=clf.classes_,
+    )
     plt.xlabel("Predicted")
     plt.ylabel("Actual")
     plt.title("Confusion Matrix - MLP")

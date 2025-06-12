@@ -1,8 +1,9 @@
 import os
 import pandas as pd
 from segmentation import extract_features
-from classification import run_classification 
+from classification import run_classification
 import matplotlib.pyplot as plt
+
 
 def generate_feature_dataframe(root_dir):
     """
@@ -28,9 +29,9 @@ def generate_feature_dataframe(root_dir):
 
 
 if __name__ == "__main__":
-    image_dir_0 = "archive/Dataset/Classification_dataset"
+    image_dir_0 = "Dataset/Classification_dataset"
     output_csv_0 = "classification_features.csv"
-    image_dir_1 = "archive/Dataset/Grading_dataset"
+    image_dir_1 = "Dataset/Grading_dataset"
     output_csv_1 = "grading_features.csv"
     print("📥 正在從圖片萃取特徵...")
     df_0 = generate_feature_dataframe(image_dir_0)

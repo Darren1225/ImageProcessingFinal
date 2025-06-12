@@ -1,6 +1,6 @@
 # Image Processing Final Project
 
-This project extracts a variety of features from mango images for classification or analysis. It uses OpenCV, NumPy, scikit-image, and pandas to process images and output a CSV file of features.
+This project extracts a variety of features from mango images for classification or analysis. It uses OpenCV, NumPy, scikit-image, and pandas to process images and output a CSV file of features. The extracted features are then used to train and evaluate a machine learning model for mango classification and grading.
 
 ## Features
 
@@ -28,8 +28,14 @@ pip install -r requirements.txt
 Modify the `image_dir` path in `main` if needed, then run:
 
 ```sh
-python main
+python main.py
 ```
+
+This will:
+
+- Extract features from all images in the classification and grading datasets
+- Save the features to classification_features.csv and grading_features.csv
+- Train and evaluate an MLP classifier on each dataset, printing classification reports and confusion matrices
 
 A CSV file containing the extracted features for each image will be generated.
 
